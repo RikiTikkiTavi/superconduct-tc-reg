@@ -65,8 +65,8 @@ class ModelModule(lightning.LightningModule):
 
         metrics = torchmetrics.MetricCollection(
             metrics={
-                "RMSE": torchmetrics.regression.MeanSquaredError(
-                    squared=False, num_outputs=1
+                "MSE": torchmetrics.regression.MeanSquaredError(
+                    num_outputs=1
                 ),
                 "R2": torchmetrics.regression.R2Score(num_outputs=1),
             }
