@@ -277,9 +277,3 @@ cython_debug/
 #.idea/
 
 # End of https://www.toptal.com/developers/gitignore/api/pycharm,python
-
-/data/
-/mlruns
-/lightning_logs
-/ml-runs
-/outputs

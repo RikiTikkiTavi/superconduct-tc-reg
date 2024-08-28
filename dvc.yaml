@@ -1,0 +1,11 @@
+stages:
+  download_data:
+    cmd: |
+      curl -L -o data.zip https://archive.ics.uci.edu/static/public/464/superconductivty+data.zip
+      mkdir -p data/raw/superconductivity_data
+      unzip data.zip -d data/raw/superconductivity_data
+      rm data.zip
+    deps:
+      - https://archive.ics.uci.edu/static/public/464/superconductivty+data.zip
+    outs:
+      - data/raw/superconductivity_data
