@@ -277,3 +277,7 @@ cython_debug/
 #.idea/
 
 # End of https://www.toptal.com/developers/gitignore/api/pycharm,python
+
+/mlflow_tracking
+/mlflow_artifacts
+/outputs

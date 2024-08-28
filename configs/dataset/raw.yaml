@@ -1,0 +1,3 @@
+file: "train.csv"
+name: "raw"
+dir: "${dir.data}/raw/superconductivity_data/${dataset.file}"

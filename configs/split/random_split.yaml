@@ -1,0 +1,5 @@
+_partial_: False
+_target_: superconduct_tc_reg.folds_gen.TrainValRandomSplitSingleFold
+val_size: 0.25
+stratified: False
+split_algorithm_seed: null

@@ -1,0 +1,46 @@
+defaults:
+  - dir: workstation
+  - dataset: raw
+  - split: random_split
+  - model: dnn
+  - optimizer: SGD
+  - lr_scheduler: ExponentialLR
+  - trainer: cpu
+  - scaler: null
+  - tracking: mlflow_workstation_local
+  - _self_
+
+hydra:
+  job:
+    chdir: True
+    name: train
+  run:  
+    dir: ${out_path}/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
+
+target: "critical_temp"
+do_test: False
+seed: null
+out_path: /home/yparomau/PycharmProjects/superconduct-tc-reg/outputs
+
+test_sample:
+  size: null
+  seed: null
+
+weights_init:
+  seed: null
+
+data_loader:
+  seed: null # controls data order
+
+optimizer:
+  lr: 0.001
+  momentum: 0.5
+
+model:
+  activation: "Sigmoid"
+  hidden_size: 32
+  dropout: 0.1
+
+trainer:
+  deterministic: False
+  max_epochs: 25
