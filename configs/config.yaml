@@ -15,12 +15,11 @@ hydra:
     chdir: True
     name: train
   run:  
-    dir: ${out_path}/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: ${dir.out}/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
 
 target: "critical_temp"
 do_test: False
 seed: null
-out_path: /home/yparomau/PycharmProjects/superconduct-tc-reg/outputs
 
 test_sample:
   size: null

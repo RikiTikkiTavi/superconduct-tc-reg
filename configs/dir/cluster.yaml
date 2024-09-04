@@ -1,1 +1,3 @@
-data: "/data/horse/ws/s4610340-isml/soil_analysis/data"
+base: "/data/horse/ws/s4610340-isml/superconduct-tc-reg"
+data: "${dir.base}/data"
+out: "${dir.base}/outputs"

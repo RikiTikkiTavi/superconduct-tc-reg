@@ -4,6 +4,9 @@ import random
 from typing import Optional, Sequence
 import uuid
 import hydra.types
+import mlflow
+import mlflow.data
+import mlflow.entities
 import numpy as np
 import omegaconf
 import pandas as pd
@@ -26,6 +29,7 @@ from superconduct_tc_reg.model_module import DNNModel, ModelModule
 
 _logger = logging.getLogger(__name__)
 
+
 def log_job_num(tracking_logger):
     try:
         hydra_conf = hydra.core.hydra_config.HydraConfig.get()
@@ -33,6 +37,26 @@ def log_job_num(tracking_logger):
             tracking_logger.log_hyperparams({"hydra/job/num": hydra_conf.job.num})
     except ValueError:
         pass
+
+
+def log_dataset(tracking_logger, df: pd.DataFrame, config):
+    # TODO: modify .experiment.
+    tracking_logger.experiment.log_inputs(
+        run_id=tracking_logger.run_id,
+        datasets=[
+            mlflow.data.DatasetInput(
+                dataset=mlflow.data.from_pandas(  # type: ignore
+                    df, source=config["dataset"]["dir"], targets=config["target"]
+                )._to_mlflow_entity(),
+                tags=[
+                    mlflow.entities.InputTag(
+                        key="mlflow.data.context", value="train+val+test"
+                    )
+                ],
+            )
+        ],
+    )
+
 
 @hydra.main(
     config_path="../../configs",
@@ -43,7 +67,9 @@ def train(config):
     # Set seed
     if config["seed"] is not None:
         _logger.info(f"Set seed={config.seed}")
-        seed_everything(config["seed"], enable_deterministic=config["trainer"]["deterministic"])
+        seed_everything(
+            config["seed"], enable_deterministic=config["trainer"]["deterministic"]
+        )
 
     # Read dataset
     df = pd.read_csv(config["dataset"]["dir"])
@@ -56,6 +82,9 @@ def train(config):
     tracking_logger.log_hyperparams(config)
     # Log job number if doing hopt with hydra
     log_job_num(tracking_logger)
+
+    # Log dataset
+    log_dataset(tracking_logger, df, config)
 
     # Train+val - test split
     df_train_val, df_test = sklearn.model_selection.train_test_split(
@@ -72,9 +101,7 @@ def train(config):
 
     features = [c for c in df.columns if c != target]
 
-    for i, (train_idx, val_idx) in enumerate(
-        spliter(elements=df_train_val.index)
-    ):
+    for i, (train_idx, val_idx) in enumerate(spliter(elements=df_train_val.index)):
 
         metrics_last_epoch = {}
 
@@ -106,7 +133,7 @@ def train(config):
             activation=config["model"]["activation"],
         )
 
-        loss_fold_prefix = "" if spliter.n_folds == 1 else f"-{target}-fold-{i}"
+        loss_fold_prefix = "" if spliter.n_folds == 1 else f"-fold-{i}"
         log_metrics = spliter.n_folds == 1
         model_module = ModelModule(
             model=model,
@@ -123,12 +150,19 @@ def train(config):
             callbacks=[
                 lightning.pytorch.callbacks.ModelSummary(max_depth=2),
                 lightning.pytorch.callbacks.TQDMProgressBar(),
+                lightning.pytorch.callbacks.ModelCheckpoint(
+                    dirpath=f"checkpoints{loss_fold_prefix}",
+                    monitor="val_loss",
+                    save_top_k=2,
+                    filename='{epoch}-{val_loss:.2f}',
+                    mode="min"
+                )
             ],
             max_epochs=config["trainer"]["max_epochs"],
             log_every_n_steps=1,
             logger=tracking_logger,
             gradient_clip_val=config["trainer"]["gradient_clip_val"],
-            enable_checkpointing=False,
+            enable_checkpointing=True,
             accelerator=config["trainer"]["accelerator"],
             deterministic=config["trainer"]["deterministic"],
             devices=config["trainer"]["devices"],
@@ -141,6 +175,8 @@ def train(config):
         if config["data_loader"]["seed"] is not None:
             data_loader_generator = torch.Generator()
             data_loader_generator.manual_seed(config["data_loader"]["seed"])
+
+        mlflow.start_run()
 
         # Set dropout seed
         if config["model"]["dropout_seed"] is not None:
@@ -164,6 +200,9 @@ def train(config):
             ),
         )
 
+        mlflow.start_run(run_id=tracking_logger.experiment.run_id)
+        mlflow.pytorch.log_model(model_module, "model")
+
         if config["model"]["dropout_seed"] is not None and config["seed"] is not None:
             _logger.info(
                 f"Setting torch seed (affected dropout) back to default seed: {config.seed}"
@@ -180,9 +219,7 @@ def train(config):
     _logger.info(dicts_mean(fold_metrics))
 
     if spliter.n_folds > 1:
-        tracking_logger.log_metrics(
-            dicts_mean(fold_metrics), step=trainer.global_step
-        )
+        tracking_logger.log_metrics(dicts_mean(fold_metrics), step=trainer.global_step)
 
     # Test
     if config["do_test"]:

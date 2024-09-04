@@ -1,5 +1,6 @@
 _target_: lightning.pytorch.loggers.MLFlowLogger
 experiment_name: "debug"
-tracking_uri: "/home/yparomau/PycharmProjects/superconduct-tc-reg/mlflow_tracking"
-artifact_location: "/home/yparomau/PycharmProjects/superconduct-tc-reg/mlflow_artifacts"
+tracking_uri: "${dir.base}/mlflow_tracking"
+artifact_location: "${dir.base}/mlflow_artifacts"
 synchronous: True
+log_model: True
