@@ -56,6 +56,9 @@ class ModelModule(lightning.LightningModule):
     ):
         super().__init__()
 
+        self.save_hyperparameters(logger=False)
+
+
         self._model = model
         self._loss = loss
 
@@ -84,11 +87,19 @@ class ModelModule(lightning.LightningModule):
             "test": [],
         }
 
+        self._stage_to_outputs = {
+            "val": [],
+            "test": [],
+        }
+
         self._loss_fold_postfix = loss_fold_postfix
         self._metrics_fold_postfix = metrics_fold_postfix
 
         self._log_metrics = log_metrics
         self._log_loss = log_loss
+
+    def outputs(self, stage: str) -> torch.Tensor:
+        return torch.concat(self._stage_to_outputs[stage], dim=0).flatten()
 
     def training_step(self, batch, batch_idx):
         x, y = batch
@@ -107,11 +118,18 @@ class ModelModule(lightning.LightningModule):
         # Update metrics
         self._stage_to_metrics[stage].update(y_hat, y)
 
-        return loss
+        return y_hat, loss
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
         return self._eval_step(batch, batch_idx, dataloader_idx, stage="val")
-
+    
+    def on_validation_batch_end(self, outputs: tuple[torch.Tensor, torch.Tensor], batch, batch_idx, *_):
+        y_hat_batch, _ = outputs
+        if batch_idx == 0:
+            self._stage_to_outputs["val"].clear()
+        
+        self._stage_to_outputs["val"].append(y_hat_batch.detach().cpu())
+    
     def _metric_name(self, target: str, metric: str):
         return f"{metric}/{target}{self._metrics_fold_postfix}"
 

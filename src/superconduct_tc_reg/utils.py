@@ -35,3 +35,11 @@ def dicts_mean(dicts: list[dict[str, float]]) -> dict[str, float]:
 
     return r
 
+def untensor_dict(dict: dict[str, torch.Tensor | float]) -> dict[str, float]:
+    r = {}
+    for k, v in dict.items():
+        if isinstance(v, torch.Tensor):
+            r[k] = v.item()
+        else:
+            r[k] = v
+    return r

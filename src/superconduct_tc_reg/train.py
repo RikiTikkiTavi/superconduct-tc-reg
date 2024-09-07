@@ -22,9 +22,10 @@ import lightning.pytorch.loggers
 import hydra
 import hydra.core.hydra_config
 import lightning.pytorch.callbacks
+import lightning.fabric.utilities.logger
 import sklearn.model_selection
 
-from superconduct_tc_reg.utils import dicts_mean, seed_everything
+from superconduct_tc_reg.utils import dicts_mean, seed_everything, untensor_dict
 from superconduct_tc_reg.model_module import DNNModel, ModelModule
 
 _logger = logging.getLogger(__name__)
@@ -64,6 +65,24 @@ def log_dataset(tracking_logger, df: pd.DataFrame, config):
     version_base="1.3",
 )
 def train(config):
+
+    mlflow.set_tracking_uri(config["tracking"]["tracking_uri"])
+    experiment = mlflow.get_experiment_by_name(config["tracking"]["experiment_name"])
+    if experiment is None:
+        experiment_id = mlflow.create_experiment(
+            config["tracking"]["experiment_name"],
+            artifact_location=config["tracking"]["artifact_location"],
+        )
+    else:
+        experiment_id = experiment.experiment_id
+
+    parent_run = mlflow.start_run(experiment_id=experiment_id)
+
+    # Setup tracking
+    tracking_logger = hydra.utils.instantiate(config["tracking"])(
+        run_id=parent_run.info.run_uuid
+    )
+
     # Set seed
     if config["seed"] is not None:
         _logger.info(f"Set seed={config.seed}")
@@ -75,16 +94,16 @@ def train(config):
     df = pd.read_csv(config["dataset"]["dir"])
     target = config["target"]
 
-    # Setup tracking
-    tracking_logger = hydra.utils.instantiate(config["tracking"])
-
     # Log config
-    tracking_logger.log_hyperparams(config)
+    mlflow.log_params(lightning.fabric.utilities.logger._flatten_dict(config))
     # Log job number if doing hopt with hydra
-    log_job_num(tracking_logger)
+    # log_job_num(tracking_logger)
 
     # Log dataset
-    log_dataset(tracking_logger, df, config)
+    mlflow.log_input(
+        dataset=mlflow.data.from_pandas(df, targets=target),  # type: ignore
+        context="train+val+test",
+    )
 
     # Train+val - test split
     df_train_val, df_test = sklearn.model_selection.train_test_split(
@@ -102,6 +121,14 @@ def train(config):
     features = [c for c in df.columns if c != target]
 
     for i, (train_idx, val_idx) in enumerate(spliter(elements=df_train_val.index)):
+
+        if spliter.n_folds > 1:
+            child_run = mlflow.start_run(
+                run_name=f"fold-{i}",
+                experiment_id=experiment_id,
+                parent_run_id=parent_run.info.run_id,
+                nested=True,
+            )
 
         metrics_last_epoch = {}
 
@@ -133,16 +160,23 @@ def train(config):
             activation=config["model"]["activation"],
         )
 
-        loss_fold_prefix = "" if spliter.n_folds == 1 else f"-fold-{i}"
-        log_metrics = spliter.n_folds == 1
         model_module = ModelModule(
             model=model,
             target=target,
             loss=loss,
             config=config,
-            loss_fold_postfix=loss_fold_prefix,
-            log_metrics=log_metrics,
+            loss_fold_postfix="",
+            log_metrics=True,
             log_loss=True,
+        )
+
+        cb_checkpoint = lightning.pytorch.callbacks.ModelCheckpoint(
+            dirpath=f"checkpoints/fold-{i}",
+            monitor="val_loss",
+            save_top_k=2,
+            filename="{epoch}-{val_loss:.2f}",
+            mode="min",
+            save_weights_only=True,
         )
 
         # Trainer
@@ -150,65 +184,33 @@ def train(config):
             callbacks=[
                 lightning.pytorch.callbacks.ModelSummary(max_depth=2),
                 lightning.pytorch.callbacks.TQDMProgressBar(),
-                lightning.pytorch.callbacks.ModelCheckpoint(
-                    dirpath=f"checkpoints{loss_fold_prefix}",
-                    monitor="val_loss",
-                    save_top_k=2,
-                    filename='{epoch}-{val_loss:.2f}',
-                    mode="min"
-                )
+                cb_checkpoint,
             ],
             max_epochs=config["trainer"]["max_epochs"],
             log_every_n_steps=1,
-            logger=tracking_logger,
             gradient_clip_val=config["trainer"]["gradient_clip_val"],
             enable_checkpointing=True,
             accelerator=config["trainer"]["accelerator"],
             deterministic=config["trainer"]["deterministic"],
             devices=config["trainer"]["devices"],
             num_sanity_val_steps=0,
+            logger=tracking_logger,
         )
 
         # Train
-        # Set data shuffle seed
-        data_loader_generator = torch.default_generator
-        if config["data_loader"]["seed"] is not None:
-            data_loader_generator = torch.Generator()
-            data_loader_generator.manual_seed(config["data_loader"]["seed"])
-
-        mlflow.start_run()
-
-        # Set dropout seed
-        if config["model"]["dropout_seed"] is not None:
-            _logger.info(
-                f'Setting torch seed (to affect dropout) to dropout seed: {config["model"]["dropout_seed"]}'
-            )
-            torch.cuda.manual_seed_all(config["model"]["dropout_seed"])
-            torch.manual_seed(config["model"]["dropout_seed"])
-
+        dataloader_val = torch.utils.data.DataLoader(
+            dataset=dataset_val,
+            batch_size=config["trainer"]["batch_size"],
+            shuffle=False,
+        )
         trainer.fit(
             model_module,
             train_dataloaders=torch.utils.data.DataLoader(
                 dataset=dataset_train,
                 batch_size=config["trainer"]["batch_size"],
-                generator=data_loader_generator,
             ),
-            val_dataloaders=torch.utils.data.DataLoader(
-                dataset=dataset_val,
-                batch_size=config["trainer"]["batch_size"],
-                shuffle=False,
-            ),
+            val_dataloaders=dataloader_val,
         )
-
-        mlflow.start_run(run_id=tracking_logger.experiment.run_id)
-        mlflow.pytorch.log_model(model_module, "model")
-
-        if config["model"]["dropout_seed"] is not None and config["seed"] is not None:
-            _logger.info(
-                f"Setting torch seed (affected dropout) back to default seed: {config.seed}"
-            )
-            torch.cuda.manual_seed_all(config.seed)  # type: ignore
-            torch.manual_seed(config.seed)
 
         # Save fold metrics
         metrics_last_epoch.update(model_module.last_val_metric_values)
@@ -216,26 +218,52 @@ def train(config):
         fold_metrics.append(model_module.last_val_metric_values)
         fold_losses.append(model_module.val_loss)
 
+        best_model = ModelModule.load_from_checkpoint(
+            cb_checkpoint.best_model_path
+        )._model
+        best_model.eval()
+        example_batch_input = next(iter(dataloader_val))[0]
+        with torch.no_grad():
+            signature = mlflow.models.infer_signature(
+                model_input=example_batch_input.numpy(),
+                model_output=best_model(example_batch_input).numpy(),
+            )
+        mlflow.pytorch.log_model(best_model, "model", signature=signature)
+
+        # Test
+        if config["do_test"]:
+            mlflow.log_input(
+                dataset=mlflow.data.from_pandas(  # type: ignore
+                    df_test, targets=target
+                ),
+                context="test",
+            )
+
+            dataset_test = torch.utils.data.TensorDataset(
+                torch.tensor(df_test[features].to_numpy(), dtype=torch.float32),
+                torch.tensor(df_test[[target]].to_numpy(), dtype=torch.float32),
+            )
+
+            trainer.test(
+                model_module,
+                dataloaders=torch.utils.data.DataLoader(
+                    dataset=dataset_test,
+                    batch_size=config["trainer"]["batch_size"],
+                    shuffle=False,
+                ),
+            )
+
+        if spliter.n_folds > 1:
+            mlflow.end_run()
+
     _logger.info(dicts_mean(fold_metrics))
 
     if spliter.n_folds > 1:
-        tracking_logger.log_metrics(dicts_mean(fold_metrics), step=trainer.global_step)
-
-    # Test
-    if config["do_test"]:
-        dataset_test = torch.utils.data.TensorDataset(
-            torch.tensor(df_test[features].to_numpy(), dtype=torch.float32),
-            torch.tensor(df_test[[target]].to_numpy(), dtype=torch.float32),
+        mlflow.log_metrics(
+            untensor_dict(dicts_mean(fold_metrics)), step=trainer.global_step
         )
 
-        trainer.test(
-            model_module,
-            dataloaders=torch.utils.data.DataLoader(
-                dataset=dataset_test,
-                batch_size=config["trainer"]["batch_size"],
-                shuffle=False,
-            ),
-        )
+    mlflow.end_run()
 
     return np.mean(fold_losses)
 

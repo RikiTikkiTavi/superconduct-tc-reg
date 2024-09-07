@@ -42,4 +42,4 @@ model:
 
 trainer:
   deterministic: False
-  max_epochs: 25
+  max_epochs: 3

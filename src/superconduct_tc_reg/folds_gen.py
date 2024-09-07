@@ -51,3 +51,36 @@ class TrainValRandomSplitSingleFold(FoldsGeneratorAlgorithm):
         )  # type: ignore
 
         yield elements_train, elements_val
+
+
+class CVFoldsGeneratorAlgorithm(FoldsGeneratorAlgorithm):
+    def __init__(self, n_folds: int, stratified: bool, **kwargs):
+        super().__init__(**kwargs)
+        self._n_folds = n_folds
+        self._stratified = stratified
+
+    @property
+    def n_folds(self):
+        return self._n_folds
+
+    def __call__(
+        self, elements: Sequence[int], targets: Optional[Sequence[int]] = None
+    ) -> Iterator[tuple[Sequence[int], Sequence[int]]]:
+        split_cls = sklearn.model_selection.KFold
+        stratify_targets = None
+
+        if self._stratified:
+            assert targets is not None
+            stratify_targets = targets
+            split_cls = sklearn.model_selection.StratifiedKFold
+
+        kf = split_cls(
+            n_splits=self._n_folds,
+            random_state=self._split_algorithm_seed,
+            shuffle=True,
+        )
+
+        for fold_i, (train_indices, val_indices) in enumerate(
+            kf.split(elements, y=stratify_targets) # type: ignore
+        ):
+            yield train_indices, val_indices

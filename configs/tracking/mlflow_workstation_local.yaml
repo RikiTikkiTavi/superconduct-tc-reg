@@ -1,6 +1,7 @@
 _target_: lightning.pytorch.loggers.MLFlowLogger
+_partial_: True
 experiment_name: "debug"
 tracking_uri: "${dir.base}/mlflow_tracking"
 artifact_location: "${dir.base}/mlflow_artifacts"
 synchronous: True
-log_model: True
+log_model: False
