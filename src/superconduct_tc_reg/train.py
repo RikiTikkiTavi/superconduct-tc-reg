@@ -148,7 +148,7 @@ def train(config):
         )
 
         # Loss
-        loss = torch.nn.MSELoss()
+        loss = hydra.utils.instantiate(config["loss"])
 
         # Model
         model = DNNModel(

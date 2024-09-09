@@ -5,9 +5,10 @@ defaults:
   - model: dnn
   - optimizer: SGD
   - lr_scheduler: ExponentialLR
-  - trainer: cpu
+  - trainer: gpu
   - scaler: null
   - tracking: mlflow_workstation_local
+  - loss: MSE
   - _self_
 
 hydra:
@@ -30,15 +31,6 @@ weights_init:
 
 data_loader:
   seed: null # controls data order
-
-optimizer:
-  lr: 0.001
-  momentum: 0.5
-
-model:
-  activation: "Sigmoid"
-  hidden_size: 32
-  dropout: 0.1
 
 trainer:
   deterministic: False

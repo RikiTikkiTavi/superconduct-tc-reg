@@ -25,14 +25,18 @@ class DNNModel(nn.Sequential):
         output_size: int,
         activation: str,
         dropout: float = 0.5,
+        batch_norm: bool = False
     ):
         if hidden_size > 0 and n_hidden > 0:
-            activation_class = getattr(torch.nn, activation)
+            activation_class = getattr(torch.nn, activation, None)
             layers = []
+            if batch_norm:
+                layers.append(nn.BatchNorm1d(input_size))
             for i in range(n_hidden):
                 size = input_size if i == 0 else hidden_size
                 layers.append(nn.Linear(size, hidden_size))
-                layers.append(activation_class())
+                if activation_class is not None:
+                    layers.append(activation_class())
                 layers.append(nn.Dropout(p=dropout))
             layers.append(nn.Linear(hidden_size, output_size))
         else:
@@ -70,6 +74,9 @@ class ModelModule(lightning.LightningModule):
             metrics={
                 "MSE": torchmetrics.regression.MeanSquaredError(
                     num_outputs=1
+                ),
+                "RMSE": torchmetrics.regression.MeanSquaredError(
+                    num_outputs=1, squared=False
                 ),
                 "R2": torchmetrics.regression.R2Score(num_outputs=1),
             }
@@ -192,4 +199,4 @@ class ModelModule(lightning.LightningModule):
         lr_scheduler = hydra.utils.instantiate(self._config["lr_scheduler"])(
             optimizer=optimizer
         )
-        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
+        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler, "monitor": "val_loss"}
