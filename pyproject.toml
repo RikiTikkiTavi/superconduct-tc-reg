@@ -13,7 +13,7 @@ packages = [{ include = "superconduct_tc_reg", from = "./src" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-torch = { version = "^2.0", source = "torch-cu118" }
+torch = { version = "^2.0", source = "torch-cpu" }
 mlflow = "^2.15.0"
 scikit-learn = "~1.1.0"
 numpy = "~1.23.0"
@@ -34,6 +34,11 @@ async-timeout = "^4.0.3"
 [[tool.poetry.source]]
 name = "torch-cu118"
 url = "https://download.pytorch.org/whl/cu118"
+priority = "explicit"
+
+[[tool.poetry.source]]
+name = "torch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
 priority = "explicit"
 
 [tool.poetry.group.interactive]

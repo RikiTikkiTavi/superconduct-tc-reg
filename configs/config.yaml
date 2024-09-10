@@ -3,9 +3,9 @@ defaults:
   - dataset: raw
   - split: random_split
   - model: dnn
-  - optimizer: SGD
+  - optimizer: AdamW
   - lr_scheduler: ExponentialLR
-  - trainer: gpu
+  - trainer: cpu
   - scaler: null
   - tracking: mlflow_workstation_local
   - loss: MSE
