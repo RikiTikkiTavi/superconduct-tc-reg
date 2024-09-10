@@ -6,7 +6,6 @@ defaults:
   - optimizer: AdamW
   - lr_scheduler: ExponentialLR
   - trainer: cpu
-  - scaler: null
   - tracking: mlflow_workstation_local
   - loss: MSE
   - _self_
@@ -21,6 +20,8 @@ hydra:
 target: "critical_temp"
 do_test: False
 seed: null
+
+scale: True
 
 test_sample:
   size: null
