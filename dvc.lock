@@ -14,3 +14,24 @@ stages:
       md5: d68c2591e0b5d87bce148e201da96152.dir
       size: 28151383
       nfiles: 2
+  process_data:
+    cmd: python -m superconduct_tc_reg.data.process
+    deps:
+    - path: configs/process_data.yaml
+      hash: md5
+      md5: fb571a37c15f74ff29af5de573b85f9f
+      size: 414
+    - path: data/raw/superconductivity_data
+      hash: md5
+      md5: d68c2591e0b5d87bce148e201da96152.dir
+      size: 28151383
+      nfiles: 2
+    - path: src/superconduct_tc_reg/data/process.py
+      hash: md5
+      md5: 1a42668b8727bb6cdea29a07ee3e2867
+      size: 2089
+    outs:
+    - path: data/processed/train-minmax-cfs_pearson_thr=0.95-pca.csv
+      hash: md5
+      md5: ad692c15bdaf0333c5dbc89f4e7cd13d
+      size: 26195172

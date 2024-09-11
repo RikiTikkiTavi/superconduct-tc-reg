@@ -1,0 +1,19 @@
+dir:
+  base: /data/horse/ws/s4610340-superconduct/superconduct-tc-reg
+  data: /data/horse/ws/s4610340-superconduct/superconduct-tc-reg/data
+  out: /data/horse/ws/s4610340-superconduct/superconduct-tc-reg/outputs
+dataset:
+  file: train.csv
+  name: raw
+  dir: /data/horse/ws/s4610340-superconduct/superconduct-tc-reg/data/raw/superconductivity_data/train.csv
+scaler:
+  _target_: sklearn.preprocessing.MinMaxScaler
+CFS:
+  _target_: superconduct_tc_reg.data.process.remove_highly_correlated_features
+  _partial_: true
+  threshold: 0.95
+  method: pearson
+PCA:
+  _target_: sklearn.decomposition.PCA
+out_path: /data/horse/ws/s4610340-superconduct/superconduct-tc-reg/data/processed/train-minmax-cfs_pearson_thr=0.95-pca.csv
+target: critical_temp

@@ -43,7 +43,7 @@ def log_job_num(tracking_logger):
 
 @hydra.main(
     config_path="../../configs",
-    config_name="config",
+    config_name="train",
     version_base="1.3",
 )
 def train(config):
