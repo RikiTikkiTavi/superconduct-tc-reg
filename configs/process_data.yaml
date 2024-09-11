@@ -1,0 +1,19 @@
+defaults:
+  - dir: cluster
+  - dataset: raw
+  - _self_
+
+scaler:
+  _target_: sklearn.preprocessing.MinMaxScaler
+
+CFS:
+  _target_: superconduct_tc_reg.data.process.remove_highly_correlated_features
+  _partial_: True
+  threshold: 0.95
+  method: "pearson"
+
+PCA:
+  _target_: sklearn.decomposition.PCA
+
+out_path: "${dir.data}/processed/train-minmax-cfs_pearson-pca.csv"
+target: "critical_temp"

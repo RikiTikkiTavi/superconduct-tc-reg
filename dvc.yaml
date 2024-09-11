@@ -9,3 +9,12 @@ stages:
       - https://archive.ics.uci.edu/static/public/464/superconductivty+data.zip
     outs:
       - data/raw/superconductivity_data
+
+  process_data:
+    cmd: python -m superconduct_tc_reg.data.process
+    deps:
+      - src/superconduct_tc_reg/data/process.py
+      - configs/process_data.yaml
+      - data/raw/superconductivity_data
+    outs:
+      - ${out_path}
