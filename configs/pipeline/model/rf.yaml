@@ -1,0 +1,17 @@
+# https://xgboost.readthedocs.io/en/stable/tutorials/rf.html
+_target_: xgboost.XGBRegressor
+_partial_: True
+objective: "reg:squarederror"
+n_estimators: 1 
+max_depth: 9
+booster: "gbtree"
+tree_method: "exact"
+eval_metric: "rmse"
+random_state: null
+subsample: 0.75
+colsample_bytree: 0.92
+num_parallel_tree: 500
+gamma: 0.0054
+learning_rate: 1.0
+reg_alpha: 0.0 #L1
+reg_lambda: 0.67 #L2

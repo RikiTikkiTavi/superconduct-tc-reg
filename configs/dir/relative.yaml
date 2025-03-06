@@ -1,0 +1,3 @@
+base: ${oc.env:PROJECT_ROOT}
+data: ${dir.base}/data
+out: ${dir.data}/outputs

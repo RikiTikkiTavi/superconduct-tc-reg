@@ -1,0 +1,5 @@
+out_file_name: train-minmax.csv
+
+steps:
+  scale:
+    _target_: sklearn.preprocessing.MinMaxScaler

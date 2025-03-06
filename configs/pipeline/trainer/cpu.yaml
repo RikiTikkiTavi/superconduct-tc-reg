@@ -1,0 +1,6 @@
+max_epochs: 100
+gradient_clip_val: null
+accelerator: "cpu"
+deterministic: True
+batch_size: 128
+devices: 1

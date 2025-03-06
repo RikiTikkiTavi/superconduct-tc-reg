@@ -1,0 +1,5 @@
+_target_: xgboost.callback.EarlyStopping
+rounds: 5
+metric_name: "rmse"
+data_name: "validation_1"
+min_delta: 0.01

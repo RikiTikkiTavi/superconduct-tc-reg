@@ -1,0 +1,11 @@
+_target_: superconduct_tc_reg.models.dnn.DNNModel
+_partial_: True
+n_hidden: 2
+hidden_size: 4096
+dropout: 0.4
+activation: Tanh
+skip_conn: False
+batch_norm: False
+softplus: True
+dropout_seed: null
+output_size: 1

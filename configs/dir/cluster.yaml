@@ -1,3 +1,0 @@
-base: "/data/horse/ws/s4610340-isml/superconduct-tc-reg"
-data: "${dir.base}/data"
-out: "${dir.base}/outputs"

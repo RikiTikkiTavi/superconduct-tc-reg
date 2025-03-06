@@ -1,0 +1,17 @@
+out_file_name: train-ho-hd_5-sc-pca.csv
+
+steps:
+  outliers:
+    _target_: superconduct_tc_reg.data.process.remove_outliers
+    _partial_: True
+    outliers: [20573]
+  duplicates:
+    _target_: superconduct_tc_reg.data.process.remove_duplicates
+    _partial_: True
+    threshold: 5
+    col_target: ${target}
+  scale:
+    _target_: sklearn.preprocessing.StandardScaler
+  pca:
+    _target_: sklearn.decomposition.PCA
+

@@ -1,0 +1,15 @@
+_target_: xgboost.XGBRegressor
+_partial_: True
+objective: "reg:squarederror"
+n_estimators: 500
+max_depth: 9
+booster: "gbtree"
+tree_method: "exact"
+eval_metric: "rmse"
+random_state: null
+gamma: 0.0054
+learning_rate: 0.11
+reg_alpha: 0.0 #L1
+reg_lambda: 0.67 #L2
+colsample_bytree: 0.92
+subsample: 1.0

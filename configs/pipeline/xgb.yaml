@@ -1,0 +1,10 @@
+defaults:
+  - model: gbdt
+  - early_stopping: gbdt_val
+
+_target_: superconduct_tc_reg.pipeline.gbdt.XGBPipeline
+_partial_: True
+
+target: ${target}
+verbose: True
+train_shuffle_seed: 111 

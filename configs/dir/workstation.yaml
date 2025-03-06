@@ -1,3 +1,0 @@
-base: "/home/yparomau/PycharmProjects/superconduct-tc-reg"
-data: "${dir.base}/data"
-out: "${dir.base}/outputs"

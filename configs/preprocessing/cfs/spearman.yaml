@@ -1,0 +1,6 @@
+enabled: True
+method:
+  _target_: superconduct_tc_reg.data.process.remove_highly_correlated_features
+  _partial_: True
+  threshold: 0.95
+  method: "spearman"

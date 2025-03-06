@@ -1,0 +1,8 @@
+defaults:
+  - dir: relative
+  - dataset: raw
+  - preprocessing: scale
+  - _self_
+
+out_file_path: "${dir.data}/processed/${preprocessing.out_file_name}"
+target: "critical_temp"

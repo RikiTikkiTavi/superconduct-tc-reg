@@ -1,0 +1,31 @@
+# @package _global_
+defaults:
+  - override /pipeline: xgb
+  - override /hydra/launcher: joblib
+  - override /hydra/sweeper: optuna
+  - override /hydra/sweeper/sampler: tpe
+
+early_stopping: null
+job_name: hopt_xgb
+out_path: /data/horse/ws/s4610340-isml/dev/tmp/${job_name}/${now:%Y-%m-%d_%H-%M-%S}
+
+hydra:
+  job:
+    name: ${job_name}
+  sweep:
+    dir: ${out_path}
+    subdir: ${run_uid}
+  sweeper:
+    n_jobs: 32
+    n_trials: 1600
+    study_name: ${job_name}-001
+    params:
+      pipeline.model.max_depth: range(6, 12)
+      pipeline.model.gamma: tag(log, interval(0.001, 0.01))
+      pipeline.model.learning_rate: interval(0.1, 0.5)
+      pipeline.model.reg_lambda: interval(0.5, 1.0)
+      pipeline.model.colsample_bytree: interval(0.7, 1.0)
+      pipeline.model.subsample: interval(0.7, 1.0)
+
+split:
+  val_size: 0.3

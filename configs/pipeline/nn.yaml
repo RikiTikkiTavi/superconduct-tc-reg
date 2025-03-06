@@ -1,0 +1,37 @@
+defaults:
+  - model: dnn
+  - optimizer: AdamW
+  - lr_scheduler: ReduceLROnPlateau
+  - trainer: gpu
+  - loss: MSE
+  - _self_
+
+_target_: superconduct_tc_reg.pipeline.dnn.DNNPipeline
+_partial_: True
+
+target: ${target}
+
+weights_init:
+  seed: 111
+
+data_loader:
+  seed: 121 # controls data order
+  num_workers: 0
+  drop_last: False
+  pin_memory: False
+  persistent_workers: False
+
+trainer:
+  deterministic: True
+  max_epochs: 5
+  batch_size: 4096
+
+warmup:
+  epochs: 5
+  lr: 0.0005
+
+model: 
+  dropout_seed: 222
+
+do_checkpointing: True
+matmul_precision: "highest"

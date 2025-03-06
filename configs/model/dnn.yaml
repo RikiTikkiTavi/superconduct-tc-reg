@@ -1,6 +1,0 @@
-hidden_size: 64
-n_hidden: 1
-activation: Tanh
-dropout: 0.25
-dropout_seed: null
-batch_norm: False

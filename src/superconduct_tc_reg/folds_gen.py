@@ -53,6 +53,32 @@ class TrainValRandomSplitSingleFold(FoldsGeneratorAlgorithm):
         yield elements_train, elements_val
 
 
+class TrainValBootstrapSplitSingleFold(FoldsGeneratorAlgorithm):
+    def __init__(self, stratified: bool, **kwargs):
+        super().__init__(**kwargs)
+        self._stratified = stratified
+
+    @property
+    def n_folds(self):
+        return 1
+
+    def __call__(
+        self, elements: Sequence[int], targets: Optional[Sequence[int]] = None
+    ) -> Iterator[tuple[Sequence[int], Sequence[int]]]:
+        if self._stratified:
+            assert targets is not None
+
+        elements_train: Sequence[int] = sklearn.utils.resample(
+            elements,
+            replace=True,
+            random_state=self._split_algorithm_seed,
+            stratify=targets,
+        )  # type: ignore
+
+        elements_val = [i for i in elements if i not in elements_train]
+
+        yield elements_train, elements_val
+
 class CVFoldsGeneratorAlgorithm(FoldsGeneratorAlgorithm):
     def __init__(self, n_folds: int, stratified: bool, **kwargs):
         super().__init__(**kwargs)

@@ -1,0 +1,4 @@
+file: "train-ho-hd_5-sc.csv"
+name: "train-ho-hd_5-sc.csv"
+dir: "${dir.data}/processed/${dataset.file}"
+features: null

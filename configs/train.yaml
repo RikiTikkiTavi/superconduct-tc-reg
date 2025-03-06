@@ -1,0 +1,27 @@
+defaults:
+  - dir: relative
+  - dataset: train_ho_hd_sc-std-cfs
+  - split: random_split
+  - target_scaler: null
+  - tracking: mlflow_workstation_local
+  - pipeline: xgb
+  - _self_
+
+hydra:
+  job:
+    chdir: True
+  run:
+    dir: outputs/${run_uid}
+
+run_uid: ${now:%Y-%m-%d_%H-%M-%S}_${uuid.uuid4:0}
+
+target: "critical_temp"
+target_scaler: null
+do_test: False
+target_metric: "val_RMSE"
+
+seed: null
+
+test_sample:
+  size: 0.2
+  seed: null

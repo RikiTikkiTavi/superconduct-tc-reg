@@ -1,3 +1,4 @@
 file: "train.csv"
 name: "raw"
 dir: "${dir.data}/raw/superconductivity_data/${dataset.file}"
+dir_elements: "${dir.data}/raw/superconductivity_data/unique_m.csv"

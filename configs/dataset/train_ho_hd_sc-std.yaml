@@ -1,0 +1,3 @@
+file: "train-ho-hd_5-sc-std.csv"
+name: "train-ho-hd_5-sc-std.csv"
+dir: "${dir.data}/processed/${dataset.file}"
