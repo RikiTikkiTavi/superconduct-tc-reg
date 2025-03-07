@@ -1,0 +1,41 @@
+# @package _global_
+defaults:
+  - override /pipeline: nn
+  - override /hydra/launcher: submitit_slurm
+  - override /hydra/sweeper: optuna
+  - override /hydra/sweeper/sampler: tpe
+  - override /split: cv
+  - override /tracking: mlflow_local # due to latency
+
+early_stopping: null
+job_name: hopt_dnn
+
+hydra:
+  job:
+    name: ${job_name}
+  sweep:
+    dir: ${dir.out} / ${job_name}
+    subdir: ${run_uid}
+  launcher:
+    gpus_per_task: 1
+    cpus_per_task: 6
+    mem_gb: 10
+    timeout_min: 60
+  sweeper:
+    n_jobs: 8
+    n_trials: 64
+    study_name: ${job_name}-001
+    params:
+      pipeline.optimizer.learning_rate: tag(log, interval(0.001, 0.01))
+      pipeline.optimizer.weight_decay: tag(log, interval(0.0001, 0.001))
+      pipeline.model.dropout: interval(0.1, 0.5)
+      
+split:
+  n_folds: 3
+
+model:
+  n_hidden: 2
+  hidden_size: 4096
+
+tracking:
+  experiment: hopt_gbdt

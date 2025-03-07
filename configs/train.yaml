@@ -4,7 +4,7 @@ defaults:
   - preprocessing: ho_hd_scale_std_cfs
   - split: random_split
   - target_scaler: null
-  - tracking: mlflow_workstation_local
+  - tracking: mlflow_local
   - pipeline: xgb
   - _self_
 

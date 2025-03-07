@@ -90,8 +90,8 @@ class CVFoldsGeneratorAlgorithm(FoldsGeneratorAlgorithm):
         return self._n_folds
 
     def __call__(
-        self, elements: Sequence[int], targets: Optional[Sequence[int]] = None
-    ) -> Iterator[tuple[Sequence[int], Sequence[int]]]:
+        self, elements: Sequence[Any], targets: Optional[Sequence[int]] = None
+    ) -> Iterator[tuple[Sequence[Any], Sequence[Any]]]:
         split_cls = sklearn.model_selection.KFold
         stratify_targets = None
 
@@ -109,4 +109,4 @@ class CVFoldsGeneratorAlgorithm(FoldsGeneratorAlgorithm):
         for fold_i, (train_indices, val_indices) in enumerate(
             kf.split(elements, y=stratify_targets) # type: ignore
         ):
-            yield train_indices, val_indices
+            yield elements[train_indices], elements[val_indices]
