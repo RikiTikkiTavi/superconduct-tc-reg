@@ -6,3 +6,6 @@ defaults:
 
 out_file_path: "${dir.data}/processed/${preprocessing.out_file_name}"
 target: "critical_temp"
+
+preprocessing:
+  do_save: True

@@ -1,7 +1,12 @@
+from functools import cache
 import logging
+import os
+from pathlib import Path
 from typing import Optional
 import uuid
+import filelock
 import hydra.types
+import joblib
 import mlflow
 import omegaconf
 import pandas as pd
@@ -13,6 +18,7 @@ import hydra.core.hydra_config
 import lightning.pytorch.callbacks
 import lightning.fabric.utilities.logger
 import sklearn.model_selection
+import hashlib
 
 
 from superconduct_tc_reg.utils import (
@@ -23,6 +29,7 @@ from superconduct_tc_reg.utils import (
 )
 from superconduct_tc_reg.data.target_scaler import TargetScaler
 from superconduct_tc_reg.pipeline.abstract import SuperconductPipeline
+import superconduct_tc_reg.data.process
 
 _logger = logging.getLogger(__name__)
 
@@ -53,6 +60,25 @@ def read_dataset(config):
     return df
 
 
+def process_data_cached(config) -> pd.DataFrame:
+    """Process-safe data preprocessing with caching"""
+    cache_path = Path(config.dir.cache)
+    cache_path.mkdir(exist_ok=True, parents=True)
+    
+    hash_key = hashlib.md5(str(config["preprocessing"]).encode()).hexdigest()
+    cache_file = cache_path / f"processed_data_{hash_key}.parquet"
+    
+    with filelock.FileLock(f"{str(cache_file)}.lock"):
+        if os.path.exists(cache_file):
+            _logger.info("Loading cached data...")
+            return pd.read_parquet(cache_file)
+        else:
+            _logger.info("Processing data...")
+            processed_data: pd.DataFrame = superconduct_tc_reg.data.process.process_data(config)
+            processed_data.to_parquet(cache_file)
+    
+    return processed_data
+
 @hydra.main(
     config_path="../../configs",
     config_name="train",
@@ -60,22 +86,10 @@ def read_dataset(config):
 )
 def train(config):
     # Setup tracking
-    mlflow.set_tracking_uri(config["tracking"]["tracking_uri"])
-    experiment = mlflow.get_experiment_by_name(config["tracking"]["experiment_name"])
-    if experiment is None:
-        experiment_id = mlflow.create_experiment(
-            config["tracking"]["experiment_name"],
-            artifact_location=config["tracking"]["artifact_location"],
-        )
-    else:
-        experiment_id = experiment.experiment_id
-
-    parent_run = mlflow.start_run(experiment_id=experiment_id)
-
-    # Setup tracking
-    tracking_logger = hydra.utils.instantiate(config["tracking"])(
-        run_id=parent_run.info.run_uuid
-    )
+    # We can access mlflow client through lightning logger
+    tracking_logger: lightning.pytorch.loggers.MLFlowLogger = hydra.utils.instantiate(
+        config["tracking"]
+    )(run_id=None)
 
     # Set seed
     if config["seed"] is not None:
@@ -87,9 +101,9 @@ def train(config):
                 and config["pipeline"]["trainer"]["deterministic"]
             ),
         )
-
-    # Read dataset
-    df = read_dataset(config)
+    
+    # Read & process data
+    df = process_data_cached(config)
     target = config["target"]
 
     target_scaler: Optional[TargetScaler] = None
@@ -98,9 +112,7 @@ def train(config):
         df[target] = target_scaler.fit_transform(df[target])  # type: ignore
 
     # Log config
-    tracking_logger.log_hyperparams(
-        lightning.fabric.utilities.logger._flatten_dict(config)
-    )
+    tracking_logger.log_hyperparams(config)
 
     # Train+val - test split
     df_train_val, df_test = sklearn.model_selection.train_test_split(

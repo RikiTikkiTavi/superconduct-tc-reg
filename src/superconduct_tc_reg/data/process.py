@@ -118,13 +118,13 @@ def process_data(config):
             index=df.index,
         )
 
-    out_path = Path(config["out_file_path"])
-    out_path.parent.mkdir(exist_ok=True, parents=True)
-
     df_features[config["target"]] = df[config["target"]]
     assert not df_features[config["target"]].isna().any()
 
-    df_features.to_csv(out_path, index=False)
+    if config["preprocessing"]["do_save"]:
+        out_path = Path(config["out_file_path"])
+        out_path.parent.mkdir(exist_ok=True, parents=True)
+        df_features.to_csv(out_path, index=False)
 
     return df_features
 

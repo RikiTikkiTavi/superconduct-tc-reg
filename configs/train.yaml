@@ -1,6 +1,7 @@
 defaults:
   - dir: relative
-  - dataset: train_ho_hd_sc-std-cfs
+  - dataset: raw
+  - preprocessing: ho_hd_scale_std_cfs
   - split: random_split
   - target_scaler: null
   - tracking: mlflow_workstation_local
@@ -12,6 +13,9 @@ hydra:
     chdir: True
   run:
     dir: outputs/${run_uid}
+
+preprocessing:
+  do_save: False
 
 run_uid: ${now:%Y-%m-%d_%H-%M-%S}_${uuid.uuid4:0}
 
