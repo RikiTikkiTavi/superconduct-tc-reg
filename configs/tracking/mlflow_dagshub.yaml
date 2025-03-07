@@ -1,0 +1,7 @@
+_target_: lightning.pytorch.loggers.MLFlowLogger
+_partial_: True
+experiment_name: "superconduct-tc-reg/debug"
+tracking_uri: "https://dagshub.com/RikiTikkiTavi/superconduct-tc-reg.mlflow"
+artifact_location: null
+synchronous: True
+log_model: False
