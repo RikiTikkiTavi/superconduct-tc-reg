@@ -1,10 +1,11 @@
 # @package _global_
 defaults:
   - override /pipeline: nn
+  - override /pipeline/lr_scheduler: ExponentialLR
   - override /hydra/launcher: submitit_slurm
   - override /hydra/sweeper: optuna
   - override /hydra/sweeper/sampler: tpe
-  - override /split: cv
+  - override /split: random_split
   - override /tracking: mlflow_local # due to latency
 
 early_stopping: null
@@ -18,9 +19,9 @@ hydra:
     subdir: ${run_uid}
   launcher:
     gpus_per_task: 1
-    cpus_per_task: 6
+    cpus_per_task: 4
     mem_gb: 10
-    timeout_min: 60
+    timeout_min: 20
   sweeper:
     n_jobs: 8
     n_trials: 64
@@ -29,9 +30,15 @@ hydra:
       pipeline.optimizer.learning_rate: tag(log, interval(0.001, 0.01))
       pipeline.optimizer.weight_decay: tag(log, interval(0.0001, 0.001))
       pipeline.model.dropout: interval(0.1, 0.5)
-      
+      pipeline.model.lr_scheduler.gamma: choice(0.98,0.99,0.999)
+
+seed: 111
+
 split:
   n_folds: 3
+
+trainer:
+  max_epochs: 50
 
 model:
   n_hidden: 2

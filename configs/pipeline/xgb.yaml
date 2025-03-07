@@ -7,4 +7,4 @@ _partial_: True
 
 target: ${target}
 verbose: True
-train_shuffle_seed: 111 
+train_shuffle_seed: ${seed} 

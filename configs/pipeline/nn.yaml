@@ -1,7 +1,7 @@
 defaults:
   - model: dnn
   - optimizer: AdamW
-  - lr_scheduler: ReduceLROnPlateau
+  - lr_scheduler: ExponentialLR
   - trainer: gpu
   - loss: MSE
   - _self_
@@ -12,26 +12,23 @@ _partial_: True
 target: ${target}
 
 weights_init:
-  seed: 111
+  seed: ${seed}
 
 data_loader:
-  seed: 121 # controls data order
+  seed: ${seed}
   num_workers: 0
   drop_last: False
   pin_memory: False
   persistent_workers: False
 
 trainer:
-  deterministic: True
-  max_epochs: 5
+  deterministic: False
+  max_epochs: 60
   batch_size: 4096
 
 warmup:
   epochs: 5
   lr: 0.0005
 
-model: 
-  dropout_seed: 222
-
-do_checkpointing: True
-matmul_precision: "highest"
+do_checkpointing: False
+matmul_precision: "high"

@@ -135,17 +135,20 @@ class ModelModule(lightning.LightningModule):
 
         self._stage_to_metrics = torch.nn.ModuleDict(
             {
+                "train": metrics.clone(prefix=f"train_", postfix=metrics_fold_postfix),  
                 "val": metrics.clone(prefix=f"val_", postfix=metrics_fold_postfix),
                 "test": metrics.clone(prefix=f"test_", postfix=metrics_fold_postfix),
             }
         )
 
         self._stage_to_losses = {
+            "train": [],
             "val": [],
             "test": [],
         }
 
         self._stage_to_outputs = {
+            "train": [],
             "val": [],
             "test": [],
         }
@@ -156,7 +159,7 @@ class ModelModule(lightning.LightningModule):
         self._log_metrics = log_metrics
         self._log_loss = log_loss
 
-        self.stage_to_last_metrics = {"val": {}, "test": {}}
+        self.stage_to_last_metrics = {"val": {}, "test": {}, "train": {}}
 
     def outputs(self, stage: str) -> torch.Tensor:
         return torch.concat(self._stage_to_outputs[stage], dim=0).flatten()

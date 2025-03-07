@@ -110,6 +110,7 @@ class DNNPipeline(SuperconductPipeline):
             devices=config["trainer"]["devices"],
             num_sanity_val_steps=0,
             logger=self.tracking_logger,
+            precision=config["trainer"]["precision"]
         )
 
         # Create rng for train data loader

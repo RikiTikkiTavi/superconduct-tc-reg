@@ -30,6 +30,8 @@ hydra:
       pipeline.model.learning_rate: interval(0.1, 0.5)
       pipeline.model.reg_lambda: interval(0.5, 1.0)
       
+seed: 111
+
 split:
   n_folds: 3
 

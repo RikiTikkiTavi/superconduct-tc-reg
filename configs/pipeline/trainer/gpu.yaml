@@ -3,4 +3,5 @@ gradient_clip_val: 100.0
 accelerator: "gpu"
 deterministic: False
 batch_size: 4096
+precision: "bf16-mixed"
 devices: [0]
