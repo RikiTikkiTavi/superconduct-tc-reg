@@ -1,0 +1,5 @@
+outs:
+    - md5: ac8e25953a1089d066d2f0204e992d45.dir
+      size: 28151383
+      path: superconductivity_data
+      nfiles: 2
