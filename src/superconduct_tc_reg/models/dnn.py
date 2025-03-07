@@ -111,8 +111,6 @@ class ModelModule(lightning.LightningModule):
     ):
         super().__init__()
 
-        self.save_hyperparameters(logger=False)
-
         self._model = model
         self._loss = loss
 

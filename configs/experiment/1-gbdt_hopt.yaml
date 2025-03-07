@@ -5,7 +5,7 @@ defaults:
   - override /hydra/sweeper: optuna
   - override /hydra/sweeper/sampler: tpe
   - override /split: cv
-  - override /tracking: mlflow_dagshub
+  - override /tracking: mlflow_local
 
 early_stopping: null
 job_name: hopt_gbdt
@@ -14,12 +14,12 @@ hydra:
   job:
     name: ${job_name}
   sweep:
-    dir: ${dir.out} / ${job_name}
+    dir: ${dir.out}/${job_name}
     subdir: ${run_uid}
   launcher:
-    cpus_per_task: 2
+    cpus_per_task: 4
     mem_gb: 5
-    timeout_min: 15
+    timeout_min: 20
   sweeper:
     n_jobs: 8
     n_trials: 64
@@ -36,4 +36,4 @@ split:
   n_folds: 3
 
 tracking:
-  experiment: hopt_gbdt
+  experiment_name: hopt_gbdt

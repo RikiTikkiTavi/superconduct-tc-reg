@@ -15,27 +15,27 @@ hydra:
   job:
     name: ${job_name}
   sweep:
-    dir: ${dir.out} / ${job_name}
+    dir: ${dir.out}/${job_name}
     subdir: ${run_uid}
   launcher:
-    gpus_per_task: 1
+    gres: "gpu:1"
     cpus_per_task: 4
     mem_gb: 10
-    timeout_min: 20
+    timeout_min: 10
   sweeper:
     n_jobs: 8
     n_trials: 64
     study_name: ${job_name}-001
     params:
-      pipeline.optimizer.learning_rate: tag(log, interval(0.001, 0.01))
+      pipeline.optimizer.lr: tag(log, interval(0.001, 0.01))
       pipeline.optimizer.weight_decay: tag(log, interval(0.0001, 0.001))
       pipeline.model.dropout: interval(0.1, 0.5)
-      pipeline.model.lr_scheduler.gamma: choice(0.98,0.99,0.999)
+      pipeline.lr_scheduler.gamma: choice(0.98,0.99,0.999)
 
 seed: 111
 
 split:
-  n_folds: 3
+  val_size: 0.25
 
 trainer:
   max_epochs: 50
@@ -45,4 +45,4 @@ model:
   hidden_size: 4096
 
 tracking:
-  experiment: hopt_gbdt
+  experiment_name: hopt_dnn
