@@ -134,21 +134,18 @@ class ModelModule(lightning.LightningModule):
         )
 
         self._stage_to_metrics = torch.nn.ModuleDict(
-            {
-                "train": metrics.clone(prefix=f"train_", postfix=metrics_fold_postfix),  
+            { 
                 "val": metrics.clone(prefix=f"val_", postfix=metrics_fold_postfix),
                 "test": metrics.clone(prefix=f"test_", postfix=metrics_fold_postfix),
             }
         )
 
         self._stage_to_losses = {
-            "train": [],
             "val": [],
             "test": [],
         }
 
         self._stage_to_outputs = {
-            "train": [],
             "val": [],
             "test": [],
         }
