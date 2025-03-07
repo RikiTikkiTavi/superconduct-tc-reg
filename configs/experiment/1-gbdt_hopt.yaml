@@ -19,7 +19,7 @@ hydra:
   launcher:
     cpus_per_task: 4
     mem_gb: 5
-    timeout_min: 20
+    timeout_min: 10
   sweeper:
     n_jobs: 8
     n_trials: 64
