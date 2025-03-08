@@ -31,6 +31,8 @@ async-timeout = "^4.0.3"
 xgboost = "^2.1.4"
 dagshub = "^0.5.9"
 hydra-submitit-launcher = "^1.2.0"
+onnx = "^1.17.0"
+onnxruntime = "^1.21.0"
 
 [[tool.poetry.source]]
 name = "torch-cu118"

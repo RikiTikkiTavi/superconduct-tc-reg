@@ -156,6 +156,8 @@ def train(config) -> float | NoReturn:
 
         _logger.info(mean_metrics)
 
+        pipeline.log_model()
+
         # We want to log the mean metrics over folds if in multiple folds settings
         if spliter.n_folds > 1:
             tracking_logger.log_metrics(

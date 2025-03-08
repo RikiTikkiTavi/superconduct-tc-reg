@@ -37,3 +37,6 @@ class SuperconductPipeline(ABC):
     @property
     @abstractmethod
     def global_step(self): ...
+
+    @abstractmethod
+    def log_model(self): ...

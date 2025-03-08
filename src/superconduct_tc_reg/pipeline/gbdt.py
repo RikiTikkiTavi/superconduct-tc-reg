@@ -86,7 +86,9 @@ class XGBPipeline(SuperconductPipeline):
         self.model_ = model
 
         # Shuffle data
-        df_train = df_train.sample(frac=1, replace=False, random_state=config["train_shuffle_seed"])
+        df_train = df_train.sample(
+            frac=1, replace=False, random_state=config["train_shuffle_seed"]
+        )
 
         # Train and validate
         model.fit(
@@ -96,7 +98,7 @@ class XGBPipeline(SuperconductPipeline):
                 (df_train[features], df_train[target]),
                 (df_val[features], df_val[target]),
             ],
-            verbose=self.config["verbose"]
+            verbose=self.config["verbose"],
         )
 
         val_results = cb_tracking.extract_step_metrics(
@@ -125,3 +127,6 @@ class XGBPipeline(SuperconductPipeline):
         if self.do_early_stopping_:
             return self.model_.best_iteration
         return self.model_.get_num_boosting_rounds() - 1
+
+    def log_model(self):
+        pass

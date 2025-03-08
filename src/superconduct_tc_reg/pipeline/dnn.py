@@ -1,32 +1,32 @@
+import io
 import logging
-import os
-import random
 from typing import Optional, Sequence
-import uuid
+
 import hydra.types
 import mlflow
 import mlflow.data
 import mlflow.entities
+import mlflow.models
+import mlflow.models
+import mlflow.models.signature
+import mlflow.types
 import numpy as np
 import omegaconf
+import onnx
 import pandas as pd
-import sklearn.preprocessing
+
 import torch.nn as nn
 import torch.utils.data
 import torch
 import torch.utils.data.sampler
-import torchmetrics.regression.mse
-import tqdm
-import torchmetrics.regression
 import lightning
 import lightning.pytorch.loggers
 import hydra
 import hydra.core.hydra_config
 import lightning.pytorch.callbacks
 import lightning.fabric.utilities.logger
-import sklearn.model_selection
+import torch.onnx
 
-from superconduct_tc_reg.data.target_scaler import TargetScaler
 from superconduct_tc_reg.models.dnn import DNNModel, ModelModule
 from superconduct_tc_reg.pipeline.abstract import SuperconductPipeline
 from superconduct_tc_reg.utils import untensor_dict
@@ -35,6 +35,69 @@ _logger = logging.getLogger(__name__)
 
 
 class DNNPipeline(SuperconductPipeline):
+
+    def log_model(self):
+
+        # Do not use context here to exclude mlflow finishes run.
+        # Just set global mlflow context to current run
+        # NOTE: This is a workaround for mlflow client still does not have log_model...
+        # https://github.com/mlflow/mlflow/issues/7392
+        mlflow.start_run(run_id=self.tracking_logger.run_id)
+
+        input_schema = mlflow.types.Schema(
+            [mlflow.types.ColSpec("float", f) for f in self.features]
+        )
+
+        torch_output_schema = mlflow.types.Schema(
+            [
+                mlflow.types.TensorSpec(
+                    type=np.dtype(np.float32),
+                    shape=(-1, 1),
+                )
+            ]
+        )
+
+        signature = mlflow.models.signature.ModelSignature(
+            inputs=input_schema, outputs=torch_output_schema
+        )
+
+        example_input = self._df_train_head[self.features]
+
+        mlflow.pytorch.log_model(
+            self.model,
+            artifact_path="models/superconduct-DNN:torch",
+            input_example=example_input,
+            signature=signature,
+            registered_model_name="superconduct-DNN:torch",
+            run_id=self.tracking_logger.run_id,
+        )
+
+        buff = io.BytesIO()
+        torch.onnx.export(
+            model=self.model,
+            args=(torch.tensor(example_input.to_numpy(), dtype=torch.float32),),
+            f=buff,
+            input_names=["input"],
+            output_names=["critical_temp"],
+            dynamic_axes={
+                "input": {0: "batch_size"},
+                "critical_temp": {0: "batch_size"},
+            },
+            opset_version=20,
+        )
+        onnx_model = onnx.load_from_string(buff.getvalue())
+        mlflow.onnx.log_model(
+            onnx_model,
+            input_example=example_input,
+            signature=mlflow.models.signature.ModelSignature(
+                inputs=input_schema,
+                outputs=mlflow.types.Schema(
+                    [mlflow.types.ColSpec(type="float", name="critical_temp")]
+                ),
+            ),
+            artifact_path="models/superconduct-DNN:onnx",
+            registered_model_name="superconduct-DNN:onnx",
+        )
 
     def fit(self, df_train: pd.DataFrame, df_val: pd.DataFrame):
         config = self.config
@@ -56,6 +119,8 @@ class DNNPipeline(SuperconductPipeline):
             torch.tensor(df_val[features].to_numpy(), dtype=torch.float32),
             torch.tensor(df_val[[target]].to_numpy(), dtype=torch.float32),
         )
+
+        self._df_train_head = df_train.head(3)
 
         # Loss
         loss = hydra.utils.instantiate(config["loss"])
@@ -110,7 +175,7 @@ class DNNPipeline(SuperconductPipeline):
             devices=config["trainer"]["devices"],
             num_sanity_val_steps=0,
             logger=self.tracking_logger,
-            precision=config["trainer"]["precision"]
+            precision=config["trainer"]["precision"],
         )
 
         # Create rng for train data loader

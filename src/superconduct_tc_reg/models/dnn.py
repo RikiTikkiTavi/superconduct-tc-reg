@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import logging
-from typing import Optional
+from typing import Optional, Sequence
+import mlflow
 import pandas as pd
 import torch.nn as nn
 import torch.utils.data
@@ -171,6 +172,7 @@ class ModelModule(lightning.LightningModule):
     def _eval_step(self, batch, batch_idx, dataloader_idx=0, stage="val"):
         x, y = batch
         y_hat = self._model(x)
+
         loss = self._loss(y_hat, y).item()
 
         if self._target_scaler is not None:
