@@ -1,4 +1,5 @@
 import tempfile
+import hydra
 import joblib
 import mlflow
 import mlflow.artifacts
@@ -52,7 +53,7 @@ def load_data_processor(data_processor_uri) -> DataProcessor:
         return joblib.load(local_path_data_processor)
 
 @hydra.main(
-    config_path="../../configs",
+    config_path="../../../configs",
     config_name="create_ete_model",
     version_base="1.3",
 )
@@ -61,7 +62,7 @@ def create_ete_model(config):
     Loads a trained model from MLflow, wraps it with preprocessing,
     and logs it as an MLflow PyFunc model.
     """
-    
+    assert config.run_id != "???"
     mlflow.set_tracking_uri(config.tracking.tracking_uri,)
     
     path_data_processor = f"{config.data_processor_artifact.path}/{config.data_processor_artifact.name}"
