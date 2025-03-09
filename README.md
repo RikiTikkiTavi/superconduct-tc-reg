@@ -1,8 +1,20 @@
 # Predicting the critical temperature of a superconductor
 
-This repository contains the code for estimation of the statistical model to predict the superconducting critical temperature based on the features extracted from the superconductor’s chemical formula [by Hamidieh et al. (2018)](http://arxiv.org/pdf/1803.10260) published in [UCIML repository](https://archive.ics.uci.edu/dataset/464/superconductivty+data).
+This repository contains the code to train and deploy ML model to predict the superconducting critical temperature based on the features extracted from the superconductor’s chemical formula [by Hamidieh et al. (2018)](http://arxiv.org/pdf/1803.10260) published in [UCIML repository](https://archive.ics.uci.edu/dataset/464/superconductivty+data).
 
 ## Results
+
+The main focus of this contribution is flexible model training & deployment & experimentation pipeline for selected modelling approaches.
+
+**Engineering:**
+
+Utilized technologies: `python`, `MLflow`, `torch`, `XGBoost`, `ONNX`, `scikit-learn`, `pandas`, `numpy`.
+
+- Flexible model training & experimentation pipeline for DNN, GBDT and RF.
+- Experiment tracking using MLflow
+- Model versioning & deployment using mlflow and ONNX.
+
+
 **Data analysis:**
 
 1. There are 4025 rows (roughly 20% of the dataset), which refer to same element, but with significantly different (>5K) critical temperature.
@@ -17,9 +29,6 @@ DNN and GBDT (Gradient-Boosted Decision Trees) models were compared under varyin
 GBDT performs significantly better then DNN, while ensuring lower variance: val_RMSE $ \approx 10 \pm 0.5$ vs $ 13 \pm 1$.
 DNN requires slightly larger model size then GBDT and resource-intensive hyperparameter 
 (including architecture parameters) tuning, to achive the result comparable with GBDT.
-
-**Engineering:**
-
 
 ## Execute
 
