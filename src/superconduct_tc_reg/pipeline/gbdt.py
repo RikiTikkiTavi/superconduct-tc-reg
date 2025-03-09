@@ -1,7 +1,10 @@
+from copy import deepcopy
 import logging
 import math
 from typing import Union
 import hydra
+import mlflow.models
+import onnxmltools
 import pandas as pd
 from superconduct_tc_reg.data.target_scaler import TargetScaler
 from superconduct_tc_reg.pipeline.abstract import SuperconductPipeline
@@ -9,6 +12,11 @@ import xgboost as xgb
 import sklearn.metrics
 import numpy as np
 import lightning.pytorch.loggers
+import mlflow
+import mlflow.xgboost
+import mlflow.models
+import mlflow.models.signature
+import mlflow.types
 
 _logger = logging.getLogger(__name__)
 
@@ -63,6 +71,7 @@ class XGBPipeline(SuperconductPipeline):
         config = self.config
         target = config["target"]
         features = [c for c in df_train.columns if c != target]
+        self.features = features
 
         #  Tracking
         cb_tracking = TrackingCB(
@@ -84,6 +93,8 @@ class XGBPipeline(SuperconductPipeline):
         # Model
         model = hydra.utils.instantiate(config["model"])(callbacks=cbs)
         self.model_ = model
+
+        self._df_example = df_train.head(n=3)
 
         # Shuffle data
         df_train = df_train.sample(
@@ -128,5 +139,55 @@ class XGBPipeline(SuperconductPipeline):
             return self.model_.best_iteration
         return self.model_.get_num_boosting_rounds() - 1
 
-    def log_model(self):
-        pass
+    def log_model(self, export_onnx: bool = True):
+        input_data = self._df_example[self.features]
+        signature = mlflow.models.infer_signature(
+            input_data, self.model_.predict(input_data)
+        )
+        mlflow.xgboost.log_model(
+            xgb_model=self.model_,
+            artifact_path="models/superconduct-gbdt:xgb",
+            signature=signature,
+            input_example=input_data,
+            run_id=self.tracking_logger.run_id,
+        )
+
+        if export_onnx:
+            from xgboost import XGBRegressor
+            from skl2onnx.common.data_types import FloatTensorType
+            from skl2onnx import convert_sklearn, update_registered_converter
+            from skl2onnx.common.shape_calculator import (
+                calculate_linear_regressor_output_shapes,
+            )
+            from onnxmltools.convert.xgboost.operator_converters.XGBoost import convert_xgboost
+            xgb_model_copy = deepcopy(self.model_)
+            xgb_model_copy.get_booster().feature_names = [f"f{i}" for i in range(input_data.shape[1])]
+
+            update_registered_converter(
+                XGBRegressor,
+                "XGBoostXGBRegressor",
+                calculate_linear_regressor_output_shapes,
+                convert_xgboost,
+            )
+            model_onnx = convert_sklearn(
+                xgb_model_copy,
+                "xgb_model",
+                initial_types=[("input", FloatTensorType([None, input_data.shape[1]]))],
+                final_types=[("critical_temp", FloatTensorType([None, 1]))],
+                target_opset={"": 12, "ai.onnx.ml": 2},
+            )
+            model_onnx.graph.output[0].name = "critical_temp"
+            mlflow.start_run(self.tracking_logger.run_id)
+            mlflow.onnx.log_model(
+                model_onnx,
+                input_example=input_data,
+                signature=mlflow.models.signature.ModelSignature(
+                    inputs=mlflow.types.Schema(
+                        [mlflow.types.ColSpec(type="float", name=col) for col in self.features]
+                    ),
+                    outputs=mlflow.types.Schema(
+                        [mlflow.types.TensorSpec(np.dtype(np.float32), shape=(-1, 1))]
+                    ),
+                ),
+                artifact_path="models/superconduct-gbdt:onnx",
+            )

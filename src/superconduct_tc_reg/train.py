@@ -2,10 +2,14 @@ from functools import cache
 import logging
 import os
 from pathlib import Path
+from tempfile import tempdir
+import tempfile
 from typing import NoReturn, Optional
 import uuid
 import filelock
 import hydra.types
+import joblib
+import mlflow
 import omegaconf
 import pandas as pd
 import sklearn.preprocessing
@@ -27,7 +31,7 @@ from superconduct_tc_reg.utils import (
 )
 from superconduct_tc_reg.data.target_scaler import TargetScaler
 from superconduct_tc_reg.pipeline.abstract import SuperconductPipeline
-import superconduct_tc_reg.data.process
+from superconduct_tc_reg.data.process import DataProcessor
 
 _logger = logging.getLogger(__name__)
 
@@ -46,38 +50,40 @@ def log_job_num(tracking_logger):
         pass
 
 
-def read_dataset(config):
-    df = pd.read_csv(config["dataset"]["dir"])
-    if "n_components" in config["dataset"]:
-        target = df[config["target"]]
-        df = df[df.columns[: config["dataset"]["n_components"]]]
-        df[config["target"]] = target
-    elif "features" in config["dataset"]:
-        df = df[config["dataset"]["features"] + [config["target"]]]
-
-    return df
-
-
-def process_data_cached(config) -> pd.DataFrame:
+def process_data_cached(config) -> tuple[pd.DataFrame, DataProcessor]:
     """Process-safe data preprocessing with caching"""
     cache_path = Path(config.dir.cache)
     cache_path.mkdir(exist_ok=True, parents=True)
 
     hash_key = hashlib.md5(str(config["preprocessing"]).encode()).hexdigest()
-    cache_file = cache_path / f"processed_data_{hash_key}.parquet"
+    dataset_cache_file = cache_path / f"processed_data_{hash_key}.parquet"
+    processor_cache_file = cache_path / f"data_processor_{hash_key}.joblib"
 
-    with filelock.FileLock(f"{str(cache_file)}.lock"):
-        
-        if os.path.exists(cache_file):
+    with filelock.FileLock(f"{str(dataset_cache_file)}.lock"):
+
+        if os.path.exists(dataset_cache_file) and os.path.exists(processor_cache_file):
             _logger.info("Loading cached data...")
-            return pd.read_parquet(cache_file)
-        
+            dp = joblib.load(processor_cache_file)
+            return pd.read_parquet(dataset_cache_file), dp
+
         _logger.info("Processing data...")
-        processed_data: pd.DataFrame = (
-            superconduct_tc_reg.data.process.process_data(config)
+        data_processor = DataProcessor(config)
+        processed_data: pd.DataFrame = data_processor.read_fit_transform()
+        processed_data.to_parquet(dataset_cache_file)
+        joblib.dump(data_processor, processor_cache_file)
+
+        return processed_data, data_processor
+
+
+def log_data_processor(dp: DataProcessor, config, run_id):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        local_path = os.path.join(tmpdir, config["data_processor_artifact"]["name"])
+        joblib.dump(dp, local_path)
+        mlflow.log_artifact(
+            local_path=local_path,
+            artifact_path=config["data_processor_artifact"]["path"],
+            run_id=run_id,
         )
-        processed_data.to_parquet(cache_file)
-        return processed_data
 
 
 @hydra.main(
@@ -104,17 +110,12 @@ def train(config) -> float | NoReturn:
                 ),
             )
 
-        # Read & process data
-        df = process_data_cached(config)
-        target = config["target"]
-
-        target_scaler: Optional[TargetScaler] = None
-        if config["target_scaler"] is not None:
-            target_scaler = hydra.utils.instantiate(config["target_scaler"])
-            df[target] = target_scaler.fit_transform(df[target])  # type: ignore
-
         # Log config
         tracking_logger.log_hyperparams(config)
+
+        # Read & process data
+        df, data_processor = process_data_cached(config)
+        log_data_processor(data_processor, config, tracking_logger.run_id)
 
         # Train+val - test split
         df_train_val, df_test = sklearn.model_selection.train_test_split(
@@ -136,12 +137,14 @@ def train(config) -> float | NoReturn:
             pipeline: SuperconductPipeline = hydra.utils.instantiate(
                 config["pipeline"], _recursive_=False
             )(
-                target_scaler=target_scaler,
+                target_scaler=data_processor.target_scaler,
                 tracking_logger=tracking_logger,
                 fold_i=fold_i,
             )
 
-            metrics_val = pipeline.fit(df_train=df.loc[train_idx], df_val=df.loc[val_idx])
+            metrics_val = pipeline.fit(
+                df_train=df.loc[train_idx], df_val=df.loc[val_idx]
+            )
             metrics_val = remove_in_keys(metrics_val, pipeline.fold_postfix)
 
             fold_val_metrics.append(metrics_val)
@@ -156,14 +159,14 @@ def train(config) -> float | NoReturn:
 
         _logger.info(mean_metrics)
 
-        pipeline.log_model()
+        if config.do_log_model:
+            pipeline.log_model(export_onnx=config.do_export_onnx)
 
         # We want to log the mean metrics over folds if in multiple folds settings
         if spliter.n_folds > 1:
             tracking_logger.log_metrics(
                 untensor_dict(mean_metrics), step=pipeline.global_step  # type: ignore
             )
-
 
         tracking_logger.finalize("success")
 

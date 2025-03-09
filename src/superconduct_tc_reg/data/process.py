@@ -7,6 +7,9 @@ import sklearn.decomposition
 import sklearn.preprocessing
 import numpy as np
 
+from superconduct_tc_reg.data.target_scaler import TargetScaler
+
+
 def remove_highly_correlated_features(
     df: pd.DataFrame, threshold=0.95, method: Literal["pearson", "spearman"] = "pearson"
 ):
@@ -73,60 +76,126 @@ def remove_outliers(df: pd.DataFrame, df_elements: pd.DataFrame, outliers: list[
     return df.drop(index=outliers), df_elements.drop(index=outliers)
 
 
+class DataProcessor:
+    original_features: list[str] | None = None
+    target_scaler: TargetScaler | None = None
+    example: pd.DataFrame | None = None
+
+    def __init__(self, config):
+        self._config = config
+
+    def transform_features(self, df_features: pd.DataFrame):
+        config = self._config
+        steps = config["preprocessing"]["steps"]
+
+        if "scale" in steps:
+            print("Scale ...")
+            df_features = pd.DataFrame(
+                self._scaler.transform(df_features),
+                columns=df_features.columns,
+                index=df_features.index,
+            )
+
+        if "CFS" in steps:
+            print("CFS ...")
+            df_features = df_features[self._features]
+
+        if "pca" in steps:
+            print("PCA ...")
+            df_features = pd.DataFrame(
+                self._pca.transform(df_features),
+                columns=[f"pc_{i}" for i in range(self._pca.n_components_)],
+                index=df_features.index,
+            )
+
+        return df_features
+
+    def fit_transform(
+        self, df_features: pd.DataFrame, df_elements: pd.DataFrame, target: pd.Series
+    ) -> pd.DataFrame:
+
+        config = self._config
+
+        steps = config["preprocessing"]["steps"]
+
+        df = df_features.assign(**{config["target"]: target})
+        self.original_features = df_features.columns.to_list()
+        self.example = df_features.head(1)
+
+        if "outliers" in steps:
+            print("Handle outliers ...")
+            df, df_elements = hydra.utils.instantiate(steps["outliers"])(
+                df, df_elements
+            )
+
+        if "duplicates" in steps:
+            print("Handle duplicated ...")
+            df, df_elements = hydra.utils.instantiate(steps["duplicates"])(
+                df, df_elements
+            )
+
+        df_features = df.drop(config["target"], axis=1)
+
+        if "scale" in steps:
+            print("Scale ...")
+            scaler = hydra.utils.instantiate(steps["scale"])
+            df_features = pd.DataFrame(
+                scaler.fit_transform(df_features),
+                columns=df_features.columns,
+                index=df.index,
+            )
+            self._scaler = scaler
+
+        if "CFS" in steps:
+            print("CFS ...")
+            df_features = hydra.utils.instantiate(steps["CFS"])(df_features)
+            self._features = df_features.columns.to_list()
+            print(
+                f"Selected features: {df_features.columns}, N_f={len(df_features.columns)}"
+            )
+
+        if "pca" in steps:
+            print("PCA ...")
+            pca: sklearn.decomposition.PCA = hydra.utils.instantiate(steps["pca"])
+            df_features = pd.DataFrame(
+                pca.fit_transform(df_features),
+                columns=[f"pc_{i}" for i in range(pca.n_components_)],
+                index=df.index,
+            )
+            self._pca = pca
+
+        if "target_scaler" in steps:
+            target_scaler = hydra.utils.instantiate(steps["target_scaler"])
+            df[config["target"]] = target_scaler.fit_transform(df[config["target"]])  # type: ignore
+            self.target_scaler = target_scaler
+
+        df_features[config["target"]] = df[config["target"]]
+        assert not df_features[config["target"]].isna().any()
+
+        return df_features
+
+    def read_fit_transform(self) -> pd.DataFrame:
+        df = pd.read_csv(self._config["dataset"]["dir"])
+        df_elements = pd.read_csv(self._config["dataset"]["dir_elements"])
+        df_features = df.drop(self._config["target"], axis=1)
+        return self.fit_transform(df_features, df_elements, df[self._config["target"]])
+
+
 @hydra.main(
     config_path="../../../configs",
     config_name="preprocess",
     version_base="1.3",
 )
 def process_data(config):
-
-    df = pd.read_csv(config["dataset"]["dir"])
-    df_elements = pd.read_csv(config["dataset"]["dir_elements"])
-
-    steps = config["preprocessing"]["steps"]
-
-    if "outliers" in steps:
-        print("Handle outliers ...")
-        df, df_elements = hydra.utils.instantiate(steps["outliers"])(df, df_elements)
-
-    if "duplicates" in steps:
-        print("Handle duplicated ...")
-        df, df_elements = hydra.utils.instantiate(steps["duplicates"])(df, df_elements)
-
-    df_features = df.drop(config["target"], axis=1)
-
-    if "scale" in steps:
-        print("Scale ...")
-        scaler = hydra.utils.instantiate(steps["scale"])
-        df_features = pd.DataFrame(
-            scaler.fit_transform(df_features),
-            columns=df_features.columns,
-            index=df.index,
-        )
-
-    if "CFS" in steps:
-        print("CFS ...")
-        df_features = hydra.utils.instantiate(steps["CFS"])(df_features)
-        print(f"Selected features: {df_features.columns}, N_f={len(df_features.columns)}")
-
-    if "pca" in steps:
-        print("PCA ...")
-        pca: sklearn.decomposition.PCA = hydra.utils.instantiate(steps["pca"])
-        df_features = pd.DataFrame(
-            pca.fit_transform(df_features),
-            columns=[f"pc_{i}" for i in range(pca.n_components_)],
-            index=df.index,
-        )
-
-    df_features[config["target"]] = df[config["target"]]
-    assert not df_features[config["target"]].isna().any()
+    data_processor = DataProcessor(config)
+    df = data_processor.read_fit_transform()
 
     if config["preprocessing"]["do_save"]:
         out_path = Path(config["out_file_path"])
         out_path.parent.mkdir(exist_ok=True, parents=True)
-        df_features.to_csv(out_path, index=False)
+        df.to_csv(out_path, index=False)
 
-    return df_features
+    return df
 
 
 if __name__ == "__main__":

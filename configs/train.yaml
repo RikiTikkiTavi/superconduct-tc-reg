@@ -24,8 +24,17 @@ target_scaler: null
 do_test: False
 target_metric: "val_RMSE"
 
+do_log_model: True
+do_export_onnx: True
+
 seed: null
 
 test_sample:
   size: 0.2
   seed: 111
+
+data_processor_artifact:
+  name: data_processor.joblib
+  path: data_processing
+
+  

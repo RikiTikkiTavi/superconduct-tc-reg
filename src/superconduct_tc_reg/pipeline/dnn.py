@@ -36,7 +36,7 @@ _logger = logging.getLogger(__name__)
 
 class DNNPipeline(SuperconductPipeline):
 
-    def log_model(self):
+    def log_model(self, export_onnx: bool = False):
 
         # Do not use context here to exclude mlflow finishes run.
         # Just set global mlflow context to current run
@@ -65,39 +65,38 @@ class DNNPipeline(SuperconductPipeline):
 
         mlflow.pytorch.log_model(
             self.model,
-            artifact_path="models/superconduct-DNN:torch",
+            artifact_path="models/superconduct-dnn:torch",
             input_example=example_input,
             signature=signature,
-            registered_model_name="superconduct-DNN:torch",
             run_id=self.tracking_logger.run_id,
         )
 
-        buff = io.BytesIO()
-        torch.onnx.export(
-            model=self.model,
-            args=(torch.tensor(example_input.to_numpy(), dtype=torch.float32),),
-            f=buff,
-            input_names=["input"],
-            output_names=["critical_temp"],
-            dynamic_axes={
-                "input": {0: "batch_size"},
-                "critical_temp": {0: "batch_size"},
-            },
-            opset_version=20,
-        )
-        onnx_model = onnx.load_from_string(buff.getvalue())
-        mlflow.onnx.log_model(
-            onnx_model,
-            input_example=example_input,
-            signature=mlflow.models.signature.ModelSignature(
-                inputs=input_schema,
-                outputs=mlflow.types.Schema(
-                    [mlflow.types.ColSpec(type="float", name="critical_temp")]
+        if export_onnx:
+            buff = io.BytesIO()
+            torch.onnx.export(
+                model=self.model,
+                args=(torch.tensor(example_input.to_numpy(), dtype=torch.float32),),
+                f=buff,
+                input_names=["input"],
+                output_names=["critical_temp"],
+                dynamic_axes={
+                    "input": {0: "batch_size"},
+                    "critical_temp": {0: "batch_size"},
+                },
+                opset_version=20,
+            )
+            onnx_model = onnx.load_from_string(buff.getvalue())
+            mlflow.onnx.log_model(
+                onnx_model,
+                input_example=example_input,
+                signature=mlflow.models.signature.ModelSignature(
+                    inputs=input_schema,
+                    outputs=mlflow.types.Schema(
+                        [mlflow.types.ColSpec(type="float", name="critical_temp")]
+                    ),
                 ),
-            ),
-            artifact_path="models/superconduct-DNN:onnx",
-            registered_model_name="superconduct-DNN:onnx",
-        )
+                artifact_path="models/superconduct-dnn:onnx",
+            )
 
     def fit(self, df_train: pd.DataFrame, df_val: pd.DataFrame):
         config = self.config

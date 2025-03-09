@@ -1,0 +1,7 @@
+data_processor_artifact:
+  name: data_processor.joblib
+  path: data_processing
+
+path_to_model: "models/superconduct-gbdt:onnx"
+run_id: ???
+model_name: "superconduct-gbdt:onnx:ete"

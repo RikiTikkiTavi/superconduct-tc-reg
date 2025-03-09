@@ -4,17 +4,22 @@ This repository contains the code for estimation of the statistical model to pre
 
 ## Results
 **Data analysis:**
+
 1. There are 4025 rows (roughly 20% of the dataset), which refer to same element, but with significantly different (>5K) critical temperature.
 2. Many highly correlated features arrising due to physical nature of the features and how the dataset was originally built.
 3. There are "outliers" - entries, where critical temperature of the material was measured under extreme conditions with respect to other measurements of the same material. 
-4. 99% of the variance is explained by the first 31 principal components (PCA). However, modelling reveals, that the rest features contain important information.
+4. 99% of the variance is explained by the first 31 principal components (PCA). However, modelling reveals, that the rest PCs contain important information.
 5. Cluster analysis did not reveal any cluster structures.
 
 **Modelling:**
 
 DNN and GBDT (Gradient-Boosted Decision Trees) models were compared under varying data processing steps and model architecture heuristics.
 GBDT performs significantly better then DNN, while ensuring lower variance: val_RMSE $ \approx 10 \pm 0.5$ vs $ 13 \pm 1$.
-DNN requires resource-intensive hyperparameter (including architecture parameters) tuning, to achive the result comparable with GBDT.
+DNN requires slightly larger model size then GBDT and resource-intensive hyperparameter 
+(including architecture parameters) tuning, to achive the result comparable with GBDT.
+
+**Engineering:**
+
 
 ## Execute
 
