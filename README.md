@@ -27,11 +27,15 @@ TODO: Proper model evaluation (at least `mlflow.evaluate`)
 
 **Modelling:**
 
+Some experiment results available at: https://dagshub.com/RikiTikkiTavi/superconduct-tc-reg/experiments (due to the latency of dagshub's mlflow service current number of experiments is limited.)
+
 DNN and GBDT (Gradient-Boosted Decision Trees) models were compared under varying data processing steps and model architecture heuristics.
 GBDT performs significantly better then DNN, while ensuring lower variance: val_RMSE 
 (for now: bare eye estimate of sample mean and 98% CI from the box plot) $` \approx 9.6 \pm 0.2 `$ vs $` 13.8 \pm 0.5`$.
 DNN requires slightly larger model size then GBDT and resource-intensive hyperparameter 
 (including architecture parameters) tuning, to achive the result comparable with GBDT.
+
+TODO: Systematic experiment execution and report here
 
 ## Execute
 
