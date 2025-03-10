@@ -1,10 +1,12 @@
 defaults:
-  - tracking: mlflow_dagshub 
+  - tracking: mlflow_dagshub
+  - _self_
 
 data_processor_artifact:
   name: data_processor.joblib
   path: data_processing
 
-path_to_model: "models/superconduct-gbdt:onnx"
+source_model_name: superconduct-gbdt:onnx
+path_to_model: "models/${source_model_name}"
 run_id: "???"
-model_name: "superconduct-gbdt:onnx:ete"
+model_name: "${source_model_name}:ete"

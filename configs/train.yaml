@@ -4,7 +4,7 @@ defaults:
   - preprocessing: ho_hd_scale_std_cfs
   - split: random_split
   - target_scaler: null
-  - tracking: mlflow_local
+  - tracking: mlflow_dagshub
   - pipeline: xgb
   - _self_
 
@@ -34,6 +34,7 @@ test_sample:
   seed: 111
 
 data_processor_artifact:
+  log: True
   name: data_processor.joblib
   path: data_processing
 

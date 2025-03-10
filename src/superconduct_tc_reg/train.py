@@ -115,7 +115,9 @@ def train(config) -> float | NoReturn:
 
         # Read & process data
         df, data_processor = process_data_cached(config)
-        log_data_processor(data_processor, config, tracking_logger.run_id)
+        
+        if config.data_processor_artifact.log:
+            log_data_processor(data_processor, config, tracking_logger.run_id)
 
         # Train+val - test split
         df_train_val, df_test = sklearn.model_selection.train_test_split(

@@ -5,9 +5,9 @@ defaults:
   - override /hydra/launcher: submitit_slurm
   - override /hydra/sweeper: optuna
   - override /hydra/sweeper/sampler: tpe
-  - override /split: random_split
-  - override /tracking: mlflow_local # due to latency
-
+  - override /split: cv
+  - override /tracking: mlflow_dagshub
+  
 early_stopping: null
 job_name: hopt_dnn
 
@@ -32,13 +32,17 @@ hydra:
       pipeline.model.dropout: interval(0.1, 0.5)
       pipeline.lr_scheduler.gamma: choice(0.98,0.99,0.999)
 
-seed: 111
+seed: null
+do_log_model: False
+
+data_processor_artifact:
+  log: False
 
 split:
-  val_size: 0.25
+  n_folds: 4
 
 trainer:
-  max_epochs: 50
+  max_epochs: 100
 
 model:
   n_hidden: 2

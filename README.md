@@ -14,6 +14,8 @@ Utilized technologies: `python`, `MLflow`, `torch`, `XGBoost`, `ONNX`, `scikit-l
 - Experiment tracking using MLflow
 - Model versioning & deployment using mlflow and ONNX.
 
+TODO: Proper model evaluation (at least `mlflow.evaluate`)
+
 
 **Data analysis:**
 
@@ -26,7 +28,8 @@ Utilized technologies: `python`, `MLflow`, `torch`, `XGBoost`, `ONNX`, `scikit-l
 **Modelling:**
 
 DNN and GBDT (Gradient-Boosted Decision Trees) models were compared under varying data processing steps and model architecture heuristics.
-GBDT performs significantly better then DNN, while ensuring lower variance: val_RMSE $ \approx 10 \pm 0.5$ vs $ 13 \pm 1$.
+GBDT performs significantly better then DNN, while ensuring lower variance: val_RMSE 
+(for now: bare eye estimate of sample mean and 98% CI from the box plot) $` \approx 9.6 \pm 0.2 `$ vs $` 13.8 \pm 0.5`$.
 DNN requires slightly larger model size then GBDT and resource-intensive hyperparameter 
 (including architecture parameters) tuning, to achive the result comparable with GBDT.
 
@@ -46,10 +49,6 @@ DNN requires slightly larger model size then GBDT and resource-intensive hyperpa
     ```shell
     ./scripts/data/download.sh ./data
     ```
-2. Process data:
-    ```shell
-    ./scripts/data/process.sh ./data
-    ```
 
 ### Train
 The configuration is managed by hydra framework.
@@ -63,6 +62,20 @@ The default configuration is stored under `./configs`.
     ```
     python -m superconduct_tc_reg.train pipeline=xgb dir.base=$(pwd)
     ```
+
+### Create end-to-end model
+Create end-to-end model, which includes data preprocessing and back-scaling of target and store it to registry.
+You will need run id and source model name. Default source model name for gbdt is `superconduct-gbdt:onnx`
+
+```
+python -m superconduct_tc_reg.deploy.create_ete_model run_id=DESIRED_RUN_ID source_model_name="superconduct-gbdt:onnx"
+```
+
+### Deploy
+Deploy to a local server as FastAPI service:
+```
+mlflow models serve -m "runs:/<run_id>/superconduct-gbdt:onnx:ete" -p 5000
+```
 
 ## References
 

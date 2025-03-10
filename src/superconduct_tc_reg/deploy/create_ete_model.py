@@ -69,35 +69,34 @@ def create_ete_model(config):
     path_to_model = config.path_to_model
     run_id = config.run_id
 
-    mlflow.start_run(run_id=run_id)
+    with mlflow.start_run(run_id=run_id):
+        wrapped_model = ETEModelWithProcessing()
 
-    wrapped_model = ETEModelWithProcessing()
+        model_uri = f"runs:/{run_id}/{path_to_model}"
+        data_processor_uri = mlflow.get_artifact_uri(path_data_processor)
 
-    model_uri = f"runs:/{run_id}/{path_to_model}"
-    data_processor_uri = mlflow.get_artifact_uri(path_data_processor)
+        data_processor = load_data_processor(data_processor_uri)
 
-    data_processor = load_data_processor(data_processor_uri)
-
-    mlflow.pyfunc.log_model(
-        artifact_path=f"{path_to_model}:ete",
-        python_model=wrapped_model,
-        signature=mlflow.models.signature.ModelSignature(
-            outputs=mlflow.types.Schema(
-                [
-                    mlflow.types.ColSpec("float", "critical_temp")
-                ]
+        mlflow.pyfunc.log_model(
+            artifact_path=f"{path_to_model}:ete",
+            python_model=wrapped_model,
+            signature=mlflow.models.signature.ModelSignature(
+                outputs=mlflow.types.Schema(
+                    [
+                        mlflow.types.ColSpec("float", "critical_temp")
+                    ]
+                ),
+                inputs=mlflow.types.Schema(
+                    [
+                        mlflow.types.ColSpec("float", f)
+                        for f in data_processor.original_features
+                    ]
+                ),
             ),
-            inputs=mlflow.types.Schema(
-                [
-                    mlflow.types.ColSpec("float", f)
-                    for f in data_processor.original_features
-                ]
-            ),
-        ),
-        input_example=data_processor.example,
-        model_config={"model_uri": model_uri, "data_processor_uri": data_processor_uri},
-        registered_model_name=config.model_name
-    )
+            input_example=data_processor.example.astype(np.float32),
+            model_config={"model_uri": model_uri, "data_processor_uri": data_processor_uri},
+            registered_model_name=config.model_name
+        )
 
     _logger.info(f"Wrapped model logged under Run ID: {run_id}")
 

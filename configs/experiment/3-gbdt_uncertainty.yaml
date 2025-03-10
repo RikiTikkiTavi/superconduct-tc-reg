@@ -1,14 +1,14 @@
 # @package _global_
 defaults:
   - override /pipeline: xgb
-  - override /hydra/launcher: submitit_slurm
+  - override /hydra/launcher: joblib
   - override /hydra/sweeper: optuna
   - override /hydra/sweeper/sampler: tpe
-  - override /split: cv
+  - override /split: random_split
   - override /tracking: mlflow_dagshub
   - override /preprocessing: scale
+  - override /pipeline/early_stopping: gbdt_val
 
-early_stopping: null
 job_name: hopt_gbdt
 
 hydra:
@@ -18,28 +18,26 @@ hydra:
     dir: ${dir.out}/${job_name}
     subdir: ${run_uid}
   launcher:
-    cpus_per_task: 4
-    mem_gb: 5
-    timeout_min: 10
+    n_jobs: 1
   sweeper:
-    n_jobs: 8
-    n_trials: 64
+    n_jobs: 10
+    n_trials: 10
     study_name: ${job_name}-001
     params:
-      pipeline.model.max_depth: range(8, 11)
-      pipeline.model.gamma: tag(log, interval(0.001, 0.01))
-      pipeline.model.learning_rate: interval(0.1, 0.5)
-      pipeline.model.reg_lambda: interval(0.5, 1.0)
-
-seed: null
+      seed: range(1, 11)
+      
 do_log_model: False
+
 do_test: False
 
 data_processor_artifact:
   log: False
 
 split:
-  n_folds: 4
+  val_size: 0.25
 
 tracking:
-  experiment_name: hopt_gbdt
+  experiment_name: 3-gbdt_uncertainty
+
+early_stopping:
+  rounds: 10

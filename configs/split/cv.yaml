@@ -2,4 +2,4 @@ _partial_: False
 _target_: superconduct_tc_reg.folds_gen.CVFoldsGeneratorAlgorithm
 n_folds: 4
 stratified: False
-split_algorithm_seed: null
+split_algorithm_seed: ${seed}
